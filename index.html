@@ -3,93 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PicFake - Portal Verifikasi Foto</title>
-    <!-- Menggunakan Tailwind CSS untuk tampilan yang bersih dan profesional -->
+    <title>PicFake - Verifikasi Keaslian Foto</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        #map { height: 250px; width: 100%; border-radius: 12px; z-index: 10; }
+        .frosted { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); }
+    </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col items-center py-10 px-4">
+<body class="bg-slate-50 min-h-screen flex flex-col items-center py-6 px-4">
 
-    <!-- Card Container -->
-    <div class="w-full max-w-md bg-white shadow-xl rounded-2xl overflow-hidden border-t-8 border-yellow-500">
-        <div class="p-8 text-center">
-            <h1 class="text-3xl font-extrabold text-gray-800 tracking-tight">PicFake <span class="text-yellow-500 underline">Verify</span></h1>
-            <p class="text-xs text-gray-500 mt-3 uppercase tracking-widest font-semibold">Sistem Verifikasi Integritas Foto</p>
+    <!-- Header Logo -->
+    <div class="mb-6 text-center">
+        <h1 class="text-2xl font-black text-slate-800 tracking-tighter italic">PICFAKE <span class="text-yellow-500">VERIFY</span></h1>
+    </div>
+
+    <!-- Main Card -->
+    <div class="w-full max-w-md bg-white shadow-2xl rounded-3xl overflow-hidden border border-slate-100">
+
+        <!-- Peta (Tetap di atas atau di tengah hasil) -->
+        <div id="mapContainer" class="hidden">
+            <div id="map"></div>
         </div>
 
-        <!-- Input Area -->
-        <div class="p-8 bg-gray-50 border-t border-gray-100">
-            <div class="flex flex-col space-y-5">
-                <label class="text-sm font-bold text-gray-700 ml-1 uppercase">Masukkan Kode Foto:</label>
-                <input type="text" id="photoCodeInput" placeholder="CONTOH: YXRT..."
-                       class="w-full px-5 py-4 rounded-xl border-2 border-gray-200 focus:border-yellow-500 focus:outline-none uppercase font-mono text-lg shadow-inner">
-                <button onclick="verifyCode()" id="btnVerify"
-                        class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-black py-4 rounded-xl shadow-lg transform transition active:scale-95 uppercase tracking-wider">
-                    CEK KEASLIAN DATA
-                </button>
+        <div class="p-6">
+            <!-- Search Section -->
+            <div id="searchSection">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Masukan Kode Verifikasi</p>
+                <div class="flex gap-2">
+                    <input type="text" id="photoCodeInput" placeholder="CONTOH: ABC123XYZ"
+                           class="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-yellow-500 outline-none font-mono uppercase">
+                    <button onclick="verifyCode()" class="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold active:scale-95 transition">CEK</button>
+                </div>
             </div>
-        </div>
 
-        <!-- Result Area -->
-        <div id="resultArea" class="hidden p-8 border-t border-gray-100 bg-white shadow-inner">
-            <div id="loading" class="text-center text-gray-400 italic">Menghubungkan ke database Firebase...</div>
+            <!-- Loading -->
+            <div id="loading" class="hidden py-10 text-center">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500 mx-auto"></div>
+                <p class="text-slate-400 text-xs mt-3">Mencocokkan data server...</p>
+            </div>
 
-            <div id="dataCard" class="hidden space-y-6">
-                <div id="statusHeader" class="p-4 rounded-lg flex items-center space-x-3">
-                    <span id="statusIcon" class="text-2xl"></span>
-                    <div>
-                        <p id="statusTitle" class="font-bold text-lg"></p>
-                        <p class="text-xs opacity-80 uppercase tracking-tighter">Hasil pencocokan database real-time</p>
-                    </div>
+            <!-- Result Data (Ala Timemark) -->
+            <div id="dataCard" class="hidden mt-4 space-y-6">
+
+                <!-- Status Badge -->
+                <div id="statusBadge" class="inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">
+                    <span id="statusIcon" class="mr-1.5"></span>
+                    <span id="statusTitle"></span>
                 </div>
 
-                <div class="space-y-4 text-sm border-2 border-gray-50 p-4 rounded-xl bg-gray-50">
-                    <div class="space-y-1">
-                        <p class="text-[10px] text-gray-400 font-bold uppercase">📍 Lokasi Terdeteksi:</p>
-                        <p id="resAddress" class="font-bold text-gray-800 leading-tight"></p>
+                <!-- Info Grid -->
+                <div class="space-y-5">
+                    <div>
+                        <p class="text-[9px] font-bold text-slate-400 uppercase mb-1">📍 Alamat Pengambilan</p>
+                        <p id="resAddress" class="text-sm font-bold text-slate-800 leading-snug"></p>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
-                        <div class="space-y-1">
-                            <p class="text-[10px] text-gray-400 font-bold uppercase">🌍 Koordinat:</p>
-                            <p id="resCoords" class="font-mono text-gray-700"></p>
+                        <div>
+                            <p class="text-[9px] font-bold text-slate-400 uppercase mb-1">⏰ Waktu / Tanggal</p>
+                            <p id="resTime" class="text-xs font-semibold text-slate-700"></p>
                         </div>
-                        <div class="space-y-1">
-                            <p class="text-[10px] text-gray-400 font-bold uppercase">⏰ Waktu Pengambilan:</p>
-                            <p id="resTime" class="font-mono text-gray-700"></p>
+                        <div>
+                            <p class="text-[9px] font-bold text-slate-400 uppercase mb-1">🌍 Koordinat GPS</p>
+                            <p id="resCoords" class="text-xs font-mono text-slate-700"></p>
                         </div>
                     </div>
 
-                    <div class="pt-4 border-t border-gray-200 text-[10px] text-gray-400 font-medium">
+                    <div class="pt-4 border-t border-slate-100 grid grid-cols-2 gap-2 text-[9px] font-medium text-slate-400">
                         <p id="resDevice"></p>
-                        <p id="resAccuracy"></p>
+                        <p id="resAccuracy" class="text-right"></p>
                     </div>
                 </div>
+
+                <button onclick="window.location.reload()" class="w-full py-3 text-slate-400 text-[10px] font-bold uppercase tracking-widest border-2 border-dashed border-slate-100 rounded-xl hover:bg-slate-50 transition">
+                    Verifikasi Kode Lain
+                </button>
             </div>
 
             <!-- Not Found -->
-            <div id="notFound" class="hidden bg-red-50 border-2 border-red-200 p-6 rounded-xl text-center">
-                <p class="text-red-600 font-black text-xl">X TIDAK VALID</p>
-                <p class="text-xs text-red-500 mt-2 font-medium">Kode foto ini tidak terdaftar di server kami atau telah dimanipulasi.</p>
+            <div id="notFound" class="hidden py-8 text-center space-y-3">
+                <div class="text-4xl">❌</div>
+                <h3 class="font-black text-slate-800">DATA TIDAK DITEMUKAN</h3>
+                <p class="text-xs text-slate-400 px-6">Kode foto ini tidak terdaftar atau data telah dihapus dari sistem kami.</p>
             </div>
         </div>
     </div>
 
-    <footer class="mt-12 text-gray-400 text-[10px] text-center uppercase tracking-widest font-bold opacity-60">
-        &copy; 2026 PicFake Anti-Fraud System <br>
-        Protected by Firebase Security Rules
-    </footer>
+    <p class="mt-8 text-[9px] font-bold text-slate-300 uppercase tracking-widest">Powered by PicFake Anti-Tamper Tech</p>
 
     <script>
-        // --- KONFIGURASI DATABASE ANDA ---
         const firebaseConfig = {
             databaseURL: "https://compicfake-default-rtdb.asia-southeast1.firebasedatabase.app"
         };
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
+        let map = null;
 
-        // Otomatis cek kode jika ada di URL (e.g., ?code=ABC123)
         window.onload = function() {
             const urlParams = new URLSearchParams(window.location.search);
             const codeFromUrl = urlParams.get('code');
@@ -103,15 +119,16 @@
             const code = document.getElementById('photoCodeInput').value.trim().toUpperCase();
             if (!code) return;
 
-            const resArea = document.getElementById('resultArea');
+            const loading = document.getElementById('loading');
             const dataCard = document.getElementById('dataCard');
             const notFound = document.getElementById('notFound');
-            const loading = document.getElementById('loading');
+            const mapContainer = document.getElementById('mapContainer');
+            const searchSection = document.getElementById('searchSection');
 
-            resArea.classList.remove('hidden');
             loading.classList.remove('hidden');
             dataCard.classList.add('hidden');
             notFound.classList.add('hidden');
+            mapContainer.classList.add('hidden');
 
             database.ref('verifications/' + code).once('value').then((snapshot) => {
                 loading.classList.add('hidden');
@@ -119,41 +136,72 @@
                 if (snapshot.exists()) {
                     const val = snapshot.val();
                     dataCard.classList.remove('hidden');
+                    mapContainer.classList.remove('hidden');
+                    searchSection.classList.add('hidden');
 
                     document.getElementById('resAddress').innerText = val.address;
-                    document.getElementById('resCoords').innerText = val.latitude.toFixed(5) + ", " + val.longitude.toFixed(5);
+                    document.getElementById('resCoords').innerText = val.latitude.toFixed(6) + ", " + val.longitude.toFixed(6);
 
-                    // Status Check
-                    const header = document.getElementById('statusHeader');
+                    // Update Status Badge
+                    const badge = document.getElementById('statusBadge');
                     const title = document.getElementById('statusTitle');
                     const icon = document.getElementById('statusIcon');
 
                     if (val.isFake) {
-                        header.className = "p-4 rounded-lg flex items-center space-x-3 bg-red-600 text-white";
-                        title.innerText = "LOKASI PALSU!";
+                        badge.className = "inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-red-100 text-red-600";
+                        title.innerText = "Lokasi Dimanipulasi (FAKE)";
                         icon.innerText = "⚠️";
                     } else {
-                        header.className = "p-4 rounded-lg flex items-center space-x-3 bg-green-600 text-white shadow-md";
-                        title.innerText = "DATA VALID & ASLI";
+                        badge.className = "inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-green-100 text-green-600";
+                        title.innerText = "Data Asli & Terverifikasi";
                         icon.innerText = "✅";
                     }
 
-                    // Format Waktu
+                    // Format Time
                     const date = new Date(val.timestamp);
-                    document.getElementById('resTime').innerText = date.toLocaleTimeString('id-ID') + " " + date.toLocaleDateString('id-ID');
+                    document.getElementById('resTime').innerText = date.toLocaleTimeString('id-ID') + " - " + date.toLocaleDateString('id-ID');
 
-                    // Metadata Profesional
+                    // Metadata
                     if(val.metadata) {
-                        document.getElementById('resDevice').innerText = "DEVICE: " + (val.metadata.deviceModel || "UNKNOWN");
-                        document.getElementById('resAccuracy').innerText = "GPS ACCURACY: ±" + (val.metadata.accuracy ? val.metadata.accuracy.toFixed(1) : "0") + "M";
+                        document.getElementById('resDevice').innerText = "DEVICE: " + (val.metadata.deviceModel || "-");
+                        document.getElementById('resAccuracy').innerText = "ACCURACY: ±" + (val.metadata.accuracy ? val.metadata.accuracy.toFixed(1) : "0") + "M";
                     }
+
+                    // Initialize Map
+                    initMap(val.latitude, val.longitude, val.address);
 
                 } else {
                     notFound.classList.remove('hidden');
                 }
             }).catch(e => {
-                alert("Koneksi Error: " + e.message);
+                alert("Error Database: " + e.message);
+                loading.classList.add('hidden');
             });
+        }
+
+        function initMap(lat, lon, addr) {
+            if (map != null) {
+                map.remove();
+            }
+
+            map = L.map('map', {
+                zoomControl: false,
+                attributionControl: false
+            }).setView([lat, lon], 15);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+            const customIcon = L.divIcon({
+                className: 'custom-div-icon',
+                html: "<div style='background-color:#EAB308; width:15px; height:15px; border-radius:50%; border:3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.3);'></div>",
+                iconSize: [15, 15],
+                iconAnchor: [7, 7]
+            });
+
+            L.marker([lat, lon], {icon: customIcon}).addTo(map);
+
+            // Re-render map size after container is visible
+            setTimeout(() => { map.invalidateSize(); }, 300);
         }
     </script>
 </body>
