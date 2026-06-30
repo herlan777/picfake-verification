@@ -180,28 +180,38 @@
         }
 
         function initMap(lat, lon, addr) {
-            if (map != null) {
-                map.remove();
-            }
+            // Jeda 500ms agar kontainer HTML siap dirender browser
+            setTimeout(() => {
+                const mapDiv = document.getElementById('map');
+                if (!mapDiv) return;
 
-            map = L.map('map', {
-                zoomControl: false,
-                attributionControl: false
-            }).setView([lat, lon], 15);
+                if (map != null) {
+                    map.remove();
+                    map = null;
+                }
 
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                map = L.map('map', {
+                    zoomControl: false,
+                    attributionControl: false
+                }).setView([lat, lon], 19); // Zoom ditingkatkan ke 19 (Sangat Detail/Street Level)
 
-            const customIcon = L.divIcon({
-                className: 'custom-div-icon',
-                html: "<div style='background-color:#EAB308; width:15px; height:15px; border-radius:50%; border:3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.3);'></div>",
-                iconSize: [15, 15],
-                iconAnchor: [7, 7]
-            });
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 20 // Memungkinkan zoom lebih dalam
+                }).addTo(map);
 
-            L.marker([lat, lon], {icon: customIcon}).addTo(map);
+                const customIcon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: "<div style='background-color:#EAB308; width:18px; height:18px; border-radius:50%; border:3px solid white; box-shadow: 0 0 15px rgba(0,0,0,0.5);'></div>",
+                    iconSize: [18, 18],
+                    iconAnchor: [9, 9]
+                });
 
-            // Re-render map size after container is visible
-            setTimeout(() => { map.invalidateSize(); }, 300);
+                L.marker([lat, lon], {icon: customIcon}).addTo(map)
+                    .bindPopup("<b>Lokasi Foto</b><br>" + addr).openPopup();
+
+                // Paksa refresh ukuran peta agar tidak blank
+                map.invalidateSize();
+            }, 500);
         }
     </script>
 </body>
