@@ -89,6 +89,16 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
+        // Otomatis cek kode jika ada di URL (e.g., ?code=ABC123)
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const codeFromUrl = urlParams.get('code');
+            if (codeFromUrl) {
+                document.getElementById('photoCodeInput').value = codeFromUrl.toUpperCase();
+                verifyCode();
+            }
+        };
+
         function verifyCode() {
             const code = document.getElementById('photoCodeInput').value.trim().toUpperCase();
             if (!code) return;
